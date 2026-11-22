@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "646755991934",
+    "firebase_url": "https://billsumthin-default-rtdb.firebaseio.com",
+    "project_id": "billsumthin",
+    "storage_bucket": "billsumthin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:646755991934:android:be9dfe8970f819a7fe732f",
+        "android_client_info": {
+          "package_name": "com.akhil.billsumthin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "646755991934-0ceb3op82csfobd82s92p3976nh4ltl8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.akhil.billsumthin",
+            "certificate_hash": "145cb612244aaa63ba8ecf3ef3f1b4ed78f69ac0"
+          }
+        },
+        {
+          "client_id": "646755991934-r6bocqi28lfqv9h6p7oq4932f96sjo85.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCs6gp8obgTabhnXwenupdMmgrsvDS8Zps"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "646755991934-r6bocqi28lfqv9h6p7oq4932f96sjo85.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

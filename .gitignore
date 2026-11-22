@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Build outputs
+dist/
+*.apk
+*.aab
+*.ap_
+
+# Android build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/
+android/local.properties
+android/.idea/
+*.iml
+
+# Signing & Secrets (NEVER commit)
+*.keystore
+*.jks
+*.p12
+.env
+.env.local
+.env.*.local
+service-account*.json
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+*.log

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Understand Any Bill</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <script>
+    (function () {
+      var seen = sessionStorage.getItem('bs_preloader_done');
+      var target = seen ? './scan.html' : './pre-loader.html';
+      import('./js/firebase.js').then(function (m) {
+        return m.getAuthState();
+      }).then(function (auth) {
+        window.location.replace(auth && auth.signedIn ? target : './auth.html');
+      }).catch(function () { window.location.replace('./auth.html'); });
+    })();
+  </script>
+</head>
+<body></body>
+</html>

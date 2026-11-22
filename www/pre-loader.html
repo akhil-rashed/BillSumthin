@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/pre-loader.css" />
+</head>
+<body class="preloader-body" id="preloaderBody">
+  <main class="preloader-stage" aria-label="Loading BillSumthin">
+    <div class="preloader-logo-wrap" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2z"/>
+        <path d="M8 8h8"/>
+        <path d="M8 12h8"/>
+        <path d="M8 16h5"/>
+      </svg>
+    </div>
+    <div class="preloader-wordmark">
+      <div class="preloader-title">BillSumthin</div>
+      <div class="preloader-subtitle">Understand Any Bill</div>
+    </div>
+    <div class="preloader-progress-track" aria-hidden="true">
+      <div class="preloader-progress-bar"></div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { loadAndApplySettings } from './js/settings.js';
+    import { getAuthState } from './js/firebase.js';
+    loadAndApplySettings().catch(() => {});
+    setTimeout(async () => {
+      const auth = await getAuthState().catch(() => ({ signedIn: false }));
+      document.getElementById('preloaderBody')?.classList.add('fade-out');
+      sessionStorage.setItem('bs_preloader_done', '1');
+      setTimeout(() => window.location.replace(auth?.signedIn ? './scan.html' : './auth.html'), 260);
+    }, 900);
+  </script>
+</body>
+</html>
