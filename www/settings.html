@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Settings</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/navigation.css" />
+  <link rel="stylesheet" href="./css/settings.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <h1 class="page-title" data-i18n="settings.title">Settings</h1>
+    </div>
+    <div class="offline-banner" id="offlineBanner" data-i18n="offline.banner">Offline mode — saved bills and local analysis remain available.</div>
+  </header>
+
+  <main class="app-main animate-fade-in">
+    <section class="card settings-group">
+      <button type="button" class="settings-row" id="langRow">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconLang"></div>
+          <div>
+            <div class="settings-row-title" data-i18n="settings.language">Language</div>
+            <div class="settings-row-sub">50+ UI languages</div>
+          </div>
+        </div>
+        <div class="settings-row-right">
+          <span id="currentLangLabel">English</span>
+          <span class="chev-slot" style="width:16px;height:16px;"></span>
+        </div>
+      </button>
+
+      <button type="button" class="settings-row" id="themeRow">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconTheme"></div>
+          <div>
+            <div class="settings-row-title" data-i18n="settings.theme">Theme</div>
+            <div class="settings-row-sub" id="currentThemeLabel">System</div>
+          </div>
+        </div>
+        <div class="settings-row-right">
+          <span class="chev-slot" style="width:16px;height:16px;"></span>
+        </div>
+      </button>
+
+      <button type="button" class="settings-row" id="currencyRow">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconCurrency"></div>
+          <div>
+            <div class="settings-row-title" data-i18n="settings.currency">Preferred Currency</div>
+            <div class="settings-row-sub">50+ currencies</div>
+          </div>
+        </div>
+        <div class="settings-row-right">
+          <span id="currentCurrencyLabel">BDT (৳)</span>
+          <span class="chev-slot" style="width:16px;height:16px;"></span>
+        </div>
+      </button>
+    </section>
+
+    <section class="card settings-group">
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconCloud"></div>
+          <div>
+            <div class="settings-row-title" data-i18n="settings.cloudSync">Cloud sync</div>
+            <div class="settings-row-sub" data-i18n="settings.cloudSyncDesc">Sync bills and settings to your Firebase account</div>
+          </div>
+        </div>
+        <button type="button" class="toggle-switch" id="cloudSyncToggle" role="switch" aria-checked="false">
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconNotif"></div>
+          <div>
+            <div class="settings-row-title" data-i18n="settings.notifications">Due date reminders</div>
+            <div class="settings-row-sub">Local reminder indicators</div>
+          </div>
+        </div>
+        <button type="button" class="toggle-switch" id="notifToggle" role="switch" aria-checked="true">
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
+      <button type="button" class="settings-row" id="apiKeyRow">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconApiKey"></div>
+          <div>
+            <div class="settings-row-title">Gemini API Key</div>
+            <div class="settings-row-sub">Stored locally on this device only</div>
+          </div>
+        </div>
+        <div class="settings-row-right">
+          <span id="currentApiKeyStatus">Not set</span>
+          <span class="chev-slot" style="width:16px;height:16px;"></span>
+        </div>
+      </button>
+    </section>
+
+    <section class="card settings-group">
+      <button type="button" class="settings-row" id="exportAllBtn">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconExport"></div>
+          <div class="settings-row-title" data-i18n="settings.exportAllTxt">Export all history (TXT)</div>
+        </div>
+        <div class="settings-row-right"><span class="chev-slot" style="width:16px;height:16px;"></span></div>
+      </button>
+
+      <button type="button" class="settings-row" id="clearHistoryBtn">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="color:var(--color-danger);background:var(--color-danger-soft);" id="iconTrash"></div>
+          <div class="settings-row-title" style="color:var(--color-danger);" data-i18n="settings.clearHistory">Delete all history</div>
+        </div>
+      </button>
+    </section>
+
+    <section class="card settings-group">
+      <a href="./features.html" class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconFeatures"></div>
+          <div class="settings-row-title" data-i18n="settings.features">Features overview</div>
+        </div>
+        <div class="settings-row-right"><span class="chev-slot" style="width:16px;height:16px;"></span></div>
+      </a>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" id="iconAbout"></div>
+          <div>
+            <div class="settings-row-title" data-i18n="settings.about">About BillSumthin</div>
+            <div class="settings-row-sub">Understand Any Bill • <span data-i18n="settings.version">Version 1.0.0</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav id="bottomNav"></nav>
+
+  <script type="module">
+    import { Icons, escapeHtml } from './js/utils.js';
+    import { bootstrapPage, closeSheet, openSheet, showDialog, showToast } from './js/app.js';
+    import { updateSetting } from './js/settings.js';
+    import { initLanguage, loadLanguageManifest, t } from './js/language.js';
+    import { CURRENCIES, getCurrencyByCode } from './js/currency.js';
+    import { clearAllBills, getAllBills } from './js/storage.js';
+    import { deleteAllCloudBills, signInAnonymouslyIfNeeded } from './js/firebase.js';
+    import { exportBillsAsTxt } from './js/txt-export.js';
+
+    document.getElementById('iconLang').innerHTML = `<span style="width:18px;height:18px;">${Icons.globe}</span>`;
+    document.getElementById('iconTheme').innerHTML = `<span style="width:18px;height:18px;">${Icons.scan}</span>`;
+    document.getElementById('iconCurrency').innerHTML = `<span style="width:18px;height:18px;">${Icons.tag}</span>`;
+    document.getElementById('iconCloud').innerHTML = `<span style="width:18px;height:18px;">${Icons.cloud}</span>`;
+    document.getElementById('iconNotif').innerHTML = `<span style="width:18px;height:18px;">${Icons.history}</span>`;
+    document.getElementById('iconApiKey').innerHTML = `<span style="width:18px;height:18px;">${Icons.shield}</span>`;
+    document.getElementById('iconExport').innerHTML = `<span style="width:18px;height:18px;">${Icons.download}</span>`;
+    document.getElementById('iconTrash').innerHTML = `<span style="width:18px;height:18px;">${Icons.trash}</span>`;
+    document.getElementById('iconFeatures').innerHTML = `<span style="width:18px;height:18px;">${Icons.fileText}</span>`;
+    document.getElementById('iconAbout').innerHTML = `<span style="width:18px;height:18px;">${Icons.logo}</span>`;
+    document.querySelectorAll('.chev-slot').forEach((el) => { el.innerHTML = Icons.chevronRight; });
+
+    let settings = {};
+    let manifest = null;
+
+    function syncLabels() {
+      const langObj = manifest?.languages?.find((l) => l.code === settings.language);
+      document.getElementById('currentLangLabel').textContent = langObj ? langObj.nativeName : 'English';
+      const themeMap = {
+        system: t('settings.themeSystem', 'System'),
+        light: t('settings.themeLight', 'Light'),
+        dark: t('settings.themeDark', 'Dark')
+      };
+      document.getElementById('currentThemeLabel').textContent = themeMap[settings.theme] || 'System';
+      const cur = getCurrencyByCode(settings.preferredCurrency);
+      document.getElementById('currentCurrencyLabel').textContent = `${cur.code} (${cur.symbol})`;
+
+      const cloudBtn = document.getElementById('cloudSyncToggle');
+      cloudBtn.classList.toggle('on', Boolean(settings.cloudSync));
+      cloudBtn.setAttribute('aria-checked', String(Boolean(settings.cloudSync)));
+
+      document.getElementById('currentApiKeyStatus').textContent = settings.geminiApiKey ? 'Configured' : 'Not set';
+      const notifBtn = document.getElementById('notifToggle');
+      notifBtn.classList.toggle('on', Boolean(settings.notifications));
+      notifBtn.setAttribute('aria-checked', String(Boolean(settings.notifications)));
+    }
+
+    document.getElementById('langRow')?.addEventListener('click', () => {
+      openSheet({
+        title: t('settings.language', 'Language'),
+        bodyHtml: `
+          <div class="search-box" style="margin-bottom:12px;">
+            <input type="search" class="input" id="langSearchInput" placeholder="Search 50+ languages..." />
+          </div>
+          <div id="langOptionsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        `,
+        onMount: (body) => {
+          const renderLangs = (q = '') => {
+            const list = (manifest?.languages || []).filter((l) =>
+              `${l.name} ${l.nativeName} ${l.code}`.toLowerCase().includes(q.toLowerCase())
+            );
+            body.querySelector('#langOptionsList').innerHTML = list.map((l) => `
+              <button type="button" class="bill-row" data-lang="${l.code}">
+                <div class="bill-row-body">
+                  <div class="bill-row-title">${escapeHtml(l.nativeName)}</div>
+                  <div class="bill-row-sub">${escapeHtml(l.name)}</div>
+                </div>
+                ${l.code === settings.language ? `<span style="width:18px;height:18px;color:var(--color-primary);">${Icons.check}</span>` : ''}
+              </button>
+            `).join('');
+            body.querySelectorAll('[data-lang]').forEach((btn) => {
+              btn.addEventListener('click', async () => {
+                const code = btn.getAttribute('data-lang');
+                settings.language = code;
+                await updateSetting('language', code);
+                await initLanguage(code);
+                syncLabels();
+                closeSheet();
+                showToast(t('toast.saved', 'Changes saved'));
+              });
+            });
+          };
+          renderLangs();
+          body.querySelector('#langSearchInput')?.addEventListener('input', (e) => renderLangs(e.target.value));
+        }
+      });
+    });
+
+    document.getElementById('themeRow')?.addEventListener('click', () => {
+      const opts = [
+        { id: 'system', label: t('settings.themeSystem', 'System') },
+        { id: 'light', label: t('settings.themeLight', 'Light') },
+        { id: 'dark', label: t('settings.themeDark', 'Dark') }
+      ];
+      openSheet({
+        title: t('settings.theme', 'Theme'),
+        bodyHtml: `<div style="display:flex;flex-direction:column;gap:8px;">
+          ${opts.map((o) => `
+            <button type="button" class="bill-row" data-theme-pick="${o.id}">
+              <div class="bill-row-body"><div class="bill-row-title">${escapeHtml(o.label)}</div></div>
+              ${o.id === settings.theme ? `<span style="width:18px;height:18px;color:var(--color-primary);">${Icons.check}</span>` : ''}
+            </button>
+          `).join('')}
+        </div>`,
+        onMount: (body) => {
+          body.querySelectorAll('[data-theme-pick]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const val = btn.getAttribute('data-theme-pick');
+              settings.theme = val;
+              await updateSetting('theme', val);
+              syncLabels();
+              closeSheet();
+            });
+          });
+        }
+      });
+    });
+
+    document.getElementById('currencyRow')?.addEventListener('click', () => {
+      openSheet({
+        title: t('settings.currency', 'Preferred Currency'),
+        bodyHtml: `
+          <div class="search-box" style="margin-bottom:12px;">
+            <input type="search" class="input" id="curSearchInput" placeholder="Search 50+ currencies..." />
+          </div>
+          <div id="curOptionsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        `,
+        onMount: (body) => {
+          const renderCurs = (q = '') => {
+            const list = CURRENCIES.filter((c) => `${c.code} ${c.name} ${c.symbol}`.toLowerCase().includes(q.toLowerCase()));
+            body.querySelector('#curOptionsList').innerHTML = list.map((c) => `
+              <button type="button" class="bill-row" data-cur="${c.code}">
+                <div class="bill-row-body">
+                  <div class="bill-row-title">${escapeHtml(c.code)} — ${escapeHtml(c.symbol)}</div>
+                  <div class="bill-row-sub">${escapeHtml(c.name)}</div>
+                </div>
+                ${c.code === settings.preferredCurrency ? `<span style="width:18px;height:18px;color:var(--color-primary);">${Icons.check}</span>` : ''}
+              </button>
+            `).join('');
+            body.querySelectorAll('[data-cur]').forEach((btn) => {
+              btn.addEventListener('click', async () => {
+                const code = btn.getAttribute('data-cur');
+                settings.preferredCurrency = code;
+                await updateSetting('preferredCurrency', code);
+                syncLabels();
+                closeSheet();
+                showToast(t('toast.saved', 'Changes saved'));
+              });
+            });
+          };
+          renderCurs();
+          body.querySelector('#curSearchInput')?.addEventListener('input', (e) => renderCurs(e.target.value));
+        }
+      });
+    });
+
+    document.getElementById('apiKeyRow')?.addEventListener('click', () => {
+      openSheet({
+        title: 'Gemini API Key',
+        bodyHtml: `
+          <form id="apiKeyForm" style="display:flex;flex-direction:column;gap:12px;">
+            <p class="text-small text-muted">Optional: Enter your personal Gemini API key for enhanced bill understanding. It is saved only on this device and never uploaded to GitHub.</p>
+            <div class="input-group">
+              <label class="input-label" for="geminiKeyInput">API Key</label>
+              <input class="input" type="password" id="geminiKeyInput" placeholder="Paste Gemini API key..." value="${escapeHtml(settings.geminiApiKey || '')}" autocomplete="off" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button type="button" class="btn btn-secondary" id="clearApiKeyBtn">Clear</button>
+              <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+          </form>
+        `,
+        onMount: (body) => {
+          body.querySelector('#clearApiKeyBtn')?.addEventListener('click', async () => {
+            settings.geminiApiKey = '';
+            await updateSetting('geminiApiKey', '');
+            syncLabels();
+            closeSheet();
+            showToast(t('toast.saved', 'Changes saved'));
+          });
+          body.querySelector('#apiKeyForm')?.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const val = body.querySelector('#geminiKeyInput').value.trim();
+            settings.geminiApiKey = val;
+            await updateSetting('geminiApiKey', val);
+            syncLabels();
+            closeSheet();
+            showToast(t('toast.saved', 'Changes saved'));
+          });
+        }
+      });
+    });
+
+    document.getElementById('cloudSyncToggle')?.addEventListener('click', async () => {
+      settings.cloudSync = !settings.cloudSync;
+      await updateSetting('cloudSync', settings.cloudSync);
+      if (settings.cloudSync) {
+        await signInAnonymouslyIfNeeded();
+        showToast(t('toast.cloudEnabled', 'Cloud sync enabled'));
+      } else {
+        showToast(t('toast.cloudDisabled', 'Cloud sync disabled'));
+      }
+      syncLabels();
+    });
+
+    document.getElementById('notifToggle')?.addEventListener('click', async () => {
+      settings.notifications = !settings.notifications;
+      await updateSetting('notifications', settings.notifications);
+      syncLabels();
+    });
+
+    document.getElementById('exportAllBtn')?.addEventListener('click', async () => {
+      const bills = await getAllBills();
+      if (!bills.length) {
+        showToast(t('history.emptyTitle', 'No bills yet'), Icons.warning);
+        return;
+      }
+      const res = await exportBillsAsTxt(bills, 'BillSumthin.txt');
+      if (res.ok) showToast(t('toast.txtExported', 'TXT exported'));
+    });
+
+    document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
+      const msg = settings.cloudSync
+        ? `${t('settings.clearConfirmDesc')} ${t('settings.clearConfirmCloud')}`
+        : t('settings.clearConfirmDesc');
+      showDialog({
+        title: t('settings.clearConfirmTitle', 'Delete all history?'),
+        message: msg,
+        confirmLabel: t('common.delete', 'Delete'),
+        cancelLabel: t('common.cancel', 'Cancel'),
+        danger: true,
+        onConfirm: async () => {
+          await clearAllBills();
+          await deleteAllCloudBills(Boolean(settings.cloudSync));
+          showToast(t('toast.historyDeleted', 'History deleted'));
+        }
+      });
+    });
+
+    (async () => {
+      settings = await bootstrapPage({ activeTab: 'settings' });
+      manifest = await loadLanguageManifest();
+      syncLabels();
+    })();
+  </script>
+</body>
+</html>

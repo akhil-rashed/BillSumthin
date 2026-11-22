@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Features</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/features.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="page-title-bar">
+        <a href="./scan.html" class="icon-btn icon-flip-rtl" id="backBtn" aria-label="Back"></a>
+        <h1 class="page-title" data-i18n="settings.features">Features overview</h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main no-bottom-nav animate-fade-in">
+    <section class="features-grid" id="featuresGrid"></section>
+  </main>
+
+  <script type="module">
+    import { Icons, escapeHtml } from './js/utils.js';
+    import { bootstrapPage } from './js/app.js';
+
+    document.getElementById('backBtn').innerHTML = `<span style="width:18px;height:18px;">${Icons.back}</span>`;
+
+    const FEATURES = [
+      { icon: Icons.camera, title: 'Smart Camera & Perspective Correction', desc: 'Native CameraX capture with Auto/On/Off flash and automatic document boundary straightening.' },
+      { icon: Icons.scan, title: 'On-Device Multilingual OCR', desc: 'Reads printed bills, receipts, and screenshots across 50+ languages including Bengali, English, Hindi, Arabic, and Chinese.' },
+      { icon: Icons.fileText, title: 'Structured Bill Understanding', desc: 'Detects 16+ bill types, providers, totals vs. subtotals, taxes, VAT, fees, discounts, and line items without inventing missing fields.' },
+      { icon: Icons.warning, title: 'Suspicious Change Detector', desc: 'Flags meaningful jumps or drops compared to your previous bills from the same provider.' },
+      { icon: Icons.repeat, title: 'Recurring Charge Detection', desc: 'Automatically identifies monthly subscriptions, ISP bills, and recurring utility charges.' },
+      { icon: Icons.spending, title: 'Price History & Categorization', desc: 'Normalizes unit prices (such as Rice per kg) and answers "Where did my money go?" with automatic categories.' },
+      { icon: Icons.download, title: 'One-Click PDF & TXT Export', desc: 'Generates multi-page branded PDF reports and clean TXT summaries saved safely via Android storage.' },
+      { icon: Icons.globe, title: '50+ Languages & 50+ Currencies', desc: 'Full RTL support and accurate BDT (৳) detection alongside 50+ global currencies without silent conversion.' }
+    ];
+
+    (async () => {
+      await bootstrapPage();
+      document.getElementById('featuresGrid').innerHTML = FEATURES.map((f) => `
+        <div class="feature-item">
+          <div class="feature-item-icon"><span style="width:20px;height:20px;">${f.icon}</span></div>
+          <div>
+            <div class="feature-item-title">${escapeHtml(f.title)}</div>
+            <div class="feature-item-desc">${escapeHtml(f.desc)}</div>
+          </div>
+        </div>
+      `).join('');
+    })();
+  </script>
+</body>
+</html>

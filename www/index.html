@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Understand Any Bill</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <script>
+    (function () {
+      var seen = sessionStorage.getItem('bs_preloader_done');
+      window.location.replace(seen ? './scan.html' : './pre-loader.html');
+    })();
+  </script>
+</head>
+<body></body>
+</html>

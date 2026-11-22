@@ -1,0 +1,12 @@
+{
+  "name": "billsumthin-functions",
+  "description": "Secure Firebase Cloud Functions proxy for BillSumthin AI bill understanding",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.1"
+  }
+}

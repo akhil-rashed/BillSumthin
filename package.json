@@ -1,0 +1,26 @@
+{
+  "name": "billsumthin",
+  "version": "1.0.0",
+  "description": "BillSumthin — Understand Any Bill. Intelligent bill scanning, OCR, analysis, spending tracking, and export for Android.",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve www -l 3000",
+    "build": "node scripts/build-web.mjs",
+    "android": "npx cap open android",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:debug": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:release": "npm run android:sync && cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.2",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/filesystem": "^6.0.2",
+    "@capacitor/preferences": "^6.0.3",
+    "@capacitor/share": "^6.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "typescript": "^5.6.3"
+  }
+}

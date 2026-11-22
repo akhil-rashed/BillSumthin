@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Scan</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/navigation.css" />
+  <link rel="stylesheet" href="./css/scan.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="app-brand">
+        <div class="app-brand-mark" id="brandMark"></div>
+        <div class="app-brand-text">
+          <span class="app-brand-name" data-i18n="app.name">BillSumthin</span>
+          <span class="app-brand-tagline" data-i18n="app.tagline">Understand Any Bill</span>
+        </div>
+      </div>
+      <a href="./features.html" class="icon-btn" aria-label="Features overview" id="featuresBtn"></a>
+    </div>
+    <div class="offline-banner" id="offlineBanner" data-i18n="offline.banner">Offline mode — saved bills and local analysis remain available.</div>
+  </header>
+
+  <main class="app-main animate-fade-in">
+    <section class="scan-hero">
+      <h1 class="scan-hero-title" data-i18n="scan.heroTitle">Understand Any Bill</h1>
+      <p class="scan-hero-sub" data-i18n="scan.heroSub">Scan a receipt, utility bill, or statement in seconds.</p>
+    </section>
+
+    <section class="scan-primary-card">
+      <div class="scan-illustration" id="scanHeroIcon"></div>
+      <div class="scan-primary-copy">
+        <h2 data-i18n="scan.cardTitle">Scan a bill</h2>
+        <p data-i18n="scan.cardSub">Take a photo or choose an existing image</p>
+      </div>
+      <div class="scan-actions-stack">
+        <button type="button" class="btn btn-primary btn-block" id="takePhotoBtn">
+          <span id="takePhotoIcon" style="width:20px;height:20px;display:inline-flex;"></span>
+          <span data-i18n="scan.takePhoto">Take Photo</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-block" id="chooseGalleryBtn">
+          <span id="galleryIcon" style="width:20px;height:20px;display:inline-flex;"></span>
+          <span data-i18n="scan.chooseGallery">Choose from Gallery</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="scan-quick-stats" id="quickStats">
+      <div class="stat-mini-card">
+        <span class="stat-mini-label" data-i18n="scan.thisMonth">This month</span>
+        <span class="stat-mini-value num-tabular" id="statMonthTotal">৳0</span>
+      </div>
+      <div class="stat-mini-card">
+        <span class="stat-mini-label" data-i18n="scan.billsSaved">Bills saved</span>
+        <span class="stat-mini-value num-tabular" id="statBillCount">0</span>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <h2 class="section-title" data-i18n="scan.recentScans">Recent scans</h2>
+        <a href="./history.html" class="section-link" data-i18n="scan.viewAll">View all</a>
+      </div>
+      <div id="recentBillsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </section>
+  </main>
+
+  <!-- Web fallback camera preview when running outside Android APK -->
+  <div class="camera-sheet" id="webCameraSheet" aria-hidden="true">
+    <div class="camera-topbar">
+      <button type="button" class="camera-ctrl-btn" id="camCloseBtn" aria-label="Close camera"></button>
+      <div class="camera-status-pill" id="camDocStatus" data-i18n="camera.docDetected">Document detected</div>
+      <div style="width:48px;"></div>
+    </div>
+    <div class="camera-viewport">
+      <video id="webCameraVideo" autoplay playsinline muted></video>
+      <div class="camera-doc-frame detected"></div>
+    </div>
+    <div class="camera-controls">
+      <button type="button" class="camera-ctrl-btn" id="camFlashBtn" disabled>
+        <span id="camFlashLabel">Off</span>
+      </button>
+      <button type="button" class="camera-shutter" id="camShutterBtn" aria-label="Capture photo"></button>
+      <div style="width:48px;"></div>
+    </div>
+  </div>
+
+  <nav id="bottomNav"></nav>
+
+  <script type="module">
+    import { Icons, escapeHtml, formatShortDate } from './js/utils.js';
+    import { bootstrapPage, hideAnalysisLoading, showAnalysisLoading, showDialog, showToast } from './js/app.js';
+    import { captureBillPhoto, createThumbnailDataUrl } from './js/camera.js';
+    import { pickBillFromGallery } from './js/gallery.js';
+    import { runOcrOnImage } from './js/ocr.js';
+    import { analyzeBillText, formatBillTypeLabel } from './js/bill-analyzer.js';
+    import { analyzeBillAgainstHistory } from './js/history.js';
+    import { getCategoryMeta, resolveBillCategory } from './js/categories.js';
+    import { getAllBills, saveBill } from './js/storage.js';
+    import { formatMoney } from './js/currency.js';
+    import { syncBillToCloud } from './js/firebase.js';
+    import { openAppPermissionSettings } from './js/permissions.js';
+    import { t } from './js/language.js';
+
+    document.getElementById('brandMark').innerHTML = `<span style="width:18px;height:18px;">${Icons.logo}</span>`;
+    document.getElementById('featuresBtn').innerHTML = `<span style="width:18px;height:18px;">${Icons.fileText}</span>`;
+    document.getElementById('scanHeroIcon').innerHTML = Icons.scan;
+    document.getElementById('takePhotoIcon').innerHTML = Icons.camera;
+    document.getElementById('galleryIcon').innerHTML = Icons.gallery;
+    document.getElementById('camCloseBtn').innerHTML = `<span style="width:20px;height:20px;">${Icons.x}</span>`;
+
+    let settings = {};
+    let webStream = null;
+
+    async function processImagePipeline(imageUri, autoCorrected = false) {
+      showAnalysisLoading();
+      try {
+        const ocrRes = await runOcrOnImage(imageUri);
+        if (!ocrRes.ok) {
+          hideAnalysisLoading();
+          showDialog({
+            title: t('details.notDetected', 'Could not read bill'),
+            message: ocrRes.error || 'No readable text found. You can also paste bill text in OCR Inspector.',
+            confirmLabel: 'Open OCR Inspector',
+            onConfirm: () => {
+              sessionStorage.setItem('bs_pending_image', imageUri);
+              window.location.href = './ocr.html';
+            }
+          });
+          return;
+        }
+
+        let bill = await analyzeBillText(ocrRes.text, {
+          preferredCurrency: settings.preferredCurrency || 'BDT',
+          geminiApiKey: settings.geminiApiKey || '',
+          ocrLanguage: ocrRes.language || 'und'
+        });
+        bill.ocrConfidence = ocrRes.confidence;
+        bill.originalImageUri = imageUri;
+        bill.autoCorrected = autoCorrected;
+        bill.thumbnailDataUrl = await createThumbnailDataUrl(imageUri);
+        bill.category = await resolveBillCategory(bill);
+        bill = await analyzeBillAgainstHistory(bill, settings.suspiciousThresholdPct || 25);
+
+        await saveBill(bill);
+        await syncBillToCloud(bill, Boolean(settings.cloudSync));
+
+        hideAnalysisLoading();
+        showToast(t('toast.billAnalyzed', 'Bill analyzed'));
+        window.location.href = `./bill-details.html?id=${encodeURIComponent(bill.id)}`;
+      } catch {
+        hideAnalysisLoading();
+        showToast('Could not analyze this bill. Please try again.', Icons.warning);
+      }
+    }
+
+    async function openWebCameraFallback() {
+      const sheet = document.getElementById('webCameraSheet');
+      const video = document.getElementById('webCameraVideo');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        showToast('Camera unavailable in this browser. Choose an image from gallery.', Icons.warning);
+        return;
+      }
+      try {
+        webStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = webStream;
+        sheet.classList.add('open');
+      } catch {
+        showToast('Camera permission denied or unavailable.', Icons.warning);
+      }
+    }
+
+    function stopWebCamera() {
+      if (webStream) {
+        webStream.getTracks().forEach((tr) => tr.stop());
+        webStream = null;
+      }
+      document.getElementById('webCameraSheet')?.classList.remove('open');
+    }
+
+    document.getElementById('camCloseBtn')?.addEventListener('click', stopWebCamera);
+    document.getElementById('camShutterBtn')?.addEventListener('click', () => {
+      const video = document.getElementById('webCameraVideo');
+      if (!video || !video.videoWidth) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      stopWebCamera();
+      processImagePipeline(dataUrl, false);
+    });
+
+    document.getElementById('takePhotoBtn')?.addEventListener('click', async () => {
+      const res = await captureBillPhoto();
+      if (res.cancelled) return;
+      if (res.useWebCamera) {
+        await openWebCameraFallback();
+        return;
+      }
+      if (!res.ok) {
+        if (res.errorType === 'permission_denied') {
+          showDialog({
+            title: res.title,
+            message: res.message,
+            confirmLabel: t('perm.openSettings', 'Open Settings'),
+            onConfirm: () => openAppPermissionSettings()
+          });
+        } else {
+          showToast(res.message || 'Camera unavailable', Icons.warning);
+        }
+        return;
+      }
+      await processImagePipeline(res.imageUri, res.autoCorrected);
+    });
+
+    document.getElementById('chooseGalleryBtn')?.addEventListener('click', async () => {
+      const res = await pickBillFromGallery();
+      if (res.cancelled) return;
+      if (!res.ok) {
+        showToast(res.message || 'Could not select image', Icons.warning);
+        return;
+      }
+      await processImagePipeline(res.imageUri, res.autoCorrected);
+    });
+
+    async function renderRecent() {
+      const bills = await getAllBills();
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthBills = bills.filter((b) => new Date(b.issueDate || b.createdAt) >= monthStart);
+      const monthTotal = monthBills.reduce((s, b) => s + (typeof b.total === 'number' ? b.total : 0), 0);
+      const prefCur = settings.preferredCurrency || 'BDT';
+
+      document.getElementById('statMonthTotal').textContent = formatMoney(monthTotal, prefCur);
+      document.getElementById('statBillCount').textContent = String(bills.length);
+
+      const container = document.getElementById('recentBillsList');
+      const recent = bills.slice(0, 3);
+      if (!recent.length) {
+        container.innerHTML = `<div class="card card-compact text-small text-muted" data-i18n="scan.emptyRecent">${escapeHtml(t('scan.emptyRecent'))}</div>`;
+        return;
+      }
+      container.innerHTML = recent.map((b) => {
+        const cat = getCategoryMeta(b.category);
+        const iconHtml = b.thumbnailDataUrl
+          ? `<img src="${b.thumbnailDataUrl}" alt="" class="bill-row-thumb" />`
+          : `<span style="width:20px;height:20px;">${cat.icon}</span>`;
+        return `
+          <a href="./bill-details.html?id=${encodeURIComponent(b.id)}" class="bill-row">
+            <div class="bill-row-icon" style="background:${cat.soft};color:${cat.color};">${iconHtml}</div>
+            <div class="bill-row-body">
+              <div class="bill-row-title">${escapeHtml(b.provider !== 'Not detected' ? b.provider : formatBillTypeLabel(b.documentType))}</div>
+              <div class="bill-row-sub">${escapeHtml(formatBillTypeLabel(b.documentType))} • ${escapeHtml(formatShortDate(b.issueDate || b.createdAt))}</div>
+            </div>
+            <div class="bill-row-amount">
+              <div class="bill-row-total">${escapeHtml(formatMoney(b.total, b.currencyCode, b.currencySymbol))}</div>
+              <div class="bill-row-cat">${escapeHtml(cat.name)}</div>
+            </div>
+          </a>
+        `;
+      }).join('');
+    }
+
+    (async () => {
+      settings = await bootstrapPage({ activeTab: 'scan' });
+      await renderRecent();
+    })();
+  </script>
+</body>
+</html>

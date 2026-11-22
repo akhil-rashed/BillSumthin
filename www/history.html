@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — History</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/navigation.css" />
+  <link rel="stylesheet" href="./css/history.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <h1 class="page-title" data-i18n="history.title">History</h1>
+      <button type="button" class="btn btn-ghost btn-sm" id="exportHistoryTxtBtn" data-i18n="details.exportTxt">Export TXT</button>
+    </div>
+    <div class="offline-banner" id="offlineBanner" data-i18n="offline.banner">Offline mode — saved bills and local analysis remain available.</div>
+  </header>
+
+  <main class="app-main animate-fade-in">
+    <section class="history-controls">
+      <div class="search-box">
+        <span id="searchIconWrap" style="position:absolute;left:14px;display:inline-flex;pointer-events:none;color:var(--color-text-secondary);"></span>
+        <input type="search" class="input" id="historySearch" data-i18n-placeholder="history.searchPlaceholder" placeholder="Search provider, bill type, or item..." />
+      </div>
+
+      <div class="filter-chips-row" id="categoryFilterRow"></div>
+      <div class="filter-chips-row" id="rangeFilterRow">
+        <button type="button" class="chip active" data-range="all" data-i18n="history.all">All</button>
+        <button type="button" class="chip" data-range="this_month" data-i18n="history.thisMonth">This month</button>
+        <button type="button" class="chip" data-range="last_month" data-i18n="history.lastMonth">Last month</button>
+        <button type="button" class="chip" data-range="this_year" data-i18n="history.thisYear">This year</button>
+        <button type="button" class="chip" data-range="custom" data-i18n="history.customRange">Custom range</button>
+      </div>
+    </section>
+
+    <section class="history-list" id="historyList"></section>
+  </main>
+
+  <nav id="bottomNav"></nav>
+
+  <script type="module">
+    import { Icons, escapeHtml, formatShortDate } from './js/utils.js';
+    import { bootstrapPage, openSheet, closeSheet, showToast } from './js/app.js';
+    import { getAllBills } from './js/storage.js';
+    import { CATEGORIES, getCategoryMeta } from './js/categories.js';
+    import { filterBills } from './js/history.js';
+    import { formatBillTypeLabel } from './js/bill-analyzer.js';
+    import { formatMoney } from './js/currency.js';
+    import { exportBillsAsTxt } from './js/txt-export.js';
+    import { t } from './js/language.js';
+
+    document.getElementById('searchIconWrap').innerHTML = `<span style="width:18px;height:18px;">${Icons.search}</span>`;
+
+    const params = new URLSearchParams(window.location.search);
+    let allBills = [];
+    let state = {
+      query: '',
+      category: params.get('category') || 'all',
+      range: 'all',
+      customStart: null,
+      customEnd: null
+    };
+
+    function renderCategoryChips() {
+      const row = document.getElementById('categoryFilterRow');
+      const chips = [{ id: 'all', name: t('history.all', 'All') }, ...CATEGORIES];
+      row.innerHTML = chips.map((c) => `
+        <button type="button" class="chip ${state.category === c.id ? 'active' : ''}" data-cat="${c.id}">${escapeHtml(c.name)}</button>
+      `).join('');
+      row.querySelectorAll('[data-cat]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.category = btn.getAttribute('data-cat');
+          renderCategoryChips();
+          renderList();
+        });
+      });
+    }
+
+    function renderList() {
+      const filtered = filterBills(allBills, state);
+      const container = document.getElementById('historyList');
+      if (!filtered.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon"><span style="width:24px;height:24px;">${Icons.history}</span></div>
+            <div class="empty-state-title">${escapeHtml(t('history.emptyTitle', 'No bills yet'))}</div>
+            <div class="empty-state-desc">${escapeHtml(t('history.emptyDesc', 'Scan your first bill and BillSumthin will keep the details here.'))}</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map((b) => {
+        const cat = getCategoryMeta(b.category);
+        const iconHtml = b.thumbnailDataUrl
+          ? `<img src="${b.thumbnailDataUrl}" alt="" class="bill-row-thumb" />`
+          : `<span style="width:20px;height:20px;">${cat.icon}</span>`;
+        return `
+          <a href="./bill-details.html?id=${encodeURIComponent(b.id)}" class="bill-row">
+            <div class="bill-row-icon" style="background:${cat.soft};color:${cat.color};">${iconHtml}</div>
+            <div class="bill-row-body">
+              <div class="bill-row-title">${escapeHtml(b.provider !== 'Not detected' ? b.provider : formatBillTypeLabel(b.documentType))}</div>
+              <div class="bill-row-sub">${escapeHtml(formatBillTypeLabel(b.documentType))} • ${escapeHtml(formatShortDate(b.issueDate || b.createdAt))}</div>
+            </div>
+            <div class="bill-row-amount">
+              <div class="bill-row-total">${escapeHtml(formatMoney(b.total, b.currencyCode, b.currencySymbol))}</div>
+              <div class="bill-row-cat">${escapeHtml(cat.name)}</div>
+            </div>
+          </a>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('historySearch')?.addEventListener('input', (e) => {
+      state.query = e.target.value;
+      renderList();
+    });
+
+    document.getElementById('rangeFilterRow')?.querySelectorAll('[data-range]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const r = btn.getAttribute('data-range');
+        if (r === 'custom') {
+          openSheet({
+            title: t('history.customRange', 'Custom range'),
+            bodyHtml: `
+              <form id="customRangeForm" style="display:flex;flex-direction:column;gap:12px;">
+                <div class="input-group">
+                  <label class="input-label" for="rangeStart">Start date</label>
+                  <input class="input" type="date" id="rangeStart" value="${state.customStart || ''}" />
+                </div>
+                <div class="input-group">
+                  <label class="input-label" for="rangeEnd">End date</label>
+                  <input class="input" type="date" id="rangeEnd" value="${state.customEnd || ''}" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">${escapeHtml(t('common.confirm', 'Confirm'))}</button>
+              </form>
+            `,
+            onMount: (body) => {
+              body.querySelector('#customRangeForm')?.addEventListener('submit', (ev) => {
+                ev.preventDefault();
+                state.customStart = body.querySelector('#rangeStart').value || null;
+                state.customEnd = body.querySelector('#rangeEnd').value || null;
+                state.range = 'custom';
+                document.querySelectorAll('#rangeFilterRow .chip').forEach((c) => c.classList.toggle('active', c.getAttribute('data-range') === 'custom'));
+                closeSheet();
+                renderList();
+              });
+            }
+          });
+          return;
+        }
+        state.range = r;
+        document.querySelectorAll('#rangeFilterRow .chip').forEach((c) => c.classList.toggle('active', c.getAttribute('data-range') === r));
+        renderList();
+      });
+    });
+
+    document.getElementById('exportHistoryTxtBtn')?.addEventListener('click', async () => {
+      const filtered = filterBills(allBills, state);
+      if (!filtered.length) {
+        showToast(t('history.emptyTitle', 'No bills yet'), Icons.warning);
+        return;
+      }
+      const res = await exportBillsAsTxt(filtered, 'BillSumthin.txt');
+      if (res.ok) showToast(t('toast.txtExported', 'TXT exported'));
+    });
+
+    (async () => {
+      await bootstrapPage({ activeTab: 'history' });
+      allBills = await getAllBills();
+      renderCategoryChips();
+      renderList();
+    })();
+  </script>
+</body>
+</html>
