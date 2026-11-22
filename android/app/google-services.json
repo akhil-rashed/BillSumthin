@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "646755991934",
+    "project_id": "billsumthin",
+    "storage_bucket": "billsumthin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:646755991934:android:be9dfe8970f819a7fe732f",
+        "android_client_info": {
+          "package_name": "com.akhil.billsumthin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCs6gp8obgTabhnXwenupdMmgrsvDS8Zps"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
