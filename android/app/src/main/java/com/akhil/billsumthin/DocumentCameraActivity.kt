@@ -292,7 +292,7 @@ class DocumentCameraActivity : AppCompatActivity() {
                     flashBtn.text = "ϟ  N/A"
                     flashBtn.alpha = .45f
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 setResult(Activity.RESULT_CANCELED)
                 finish()
             }
@@ -339,7 +339,7 @@ class DocumentCameraActivity : AppCompatActivity() {
             }
             setResult(Activity.RESULT_OK, result)
             finish()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             statusPill.text = "Could not open image — try again"
         }
     }
