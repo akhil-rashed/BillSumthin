@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Bill Details</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/bill-details.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="page-title-bar">
+        <a href="./scan.html" class="icon-btn icon-flip-rtl" id="backBtn" aria-label="Back"></a>
+        <h1 class="page-title" data-i18n="details.title">Bill Details</h1>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="editBillBtn" data-i18n="details.edit">Edit</button>
+    </div>
+    <div class="offline-banner" id="offlineBanner" data-i18n="offline.banner">Offline mode — saved bills and local analysis remain available.</div>
+  </header>
+
+  <main class="app-main no-bottom-nav animate-fade-in" id="detailsMain">
+    <div class="card text-small text-muted">Loading bill...</div>
+  </main>
+
+  <script type="module">
+    import { Icons, escapeHtml, formatShortDate, parseLocaleNumber } from './js/utils.js';
+    import { bootstrapPage, openSheet, closeSheet, showToast } from './js/app.js';
+    import { getBillById, saveBill } from './js/storage.js';
+    import { formatBillTypeLabel } from './js/bill-analyzer.js';
+    import { formatMoney } from './js/currency.js';
+    import { CATEGORIES, getCategoryMeta, learnCategoryOverride } from './js/categories.js';
+    import { exportBillAsPdf } from './js/pdf-export.js';
+    import { exportBillsAsTxt } from './js/txt-export.js';
+    import { drawCleanBarChart } from './js/spending.js';
+    import { t } from './js/language.js';
+
+    document.getElementById('backBtn').innerHTML = `<span style="width:18px;height:18px;">${Icons.back}</span>`;
+
+    const params = new URLSearchParams(window.location.search);
+    const billId = params.get('id');
+    let currentBill = null;
+
+    function confidenceBadge(score) {
+      if (score >= 0.8) return `<span class="badge badge-success">${escapeHtml(t('details.highConf', 'High confidence'))}</span>`;
+      if (score >= 0.6) return `<span class="badge badge-primary">${escapeHtml(t('details.medConf', 'Medium confidence'))}</span>`;
+      return `<span class="badge badge-warning">${escapeHtml(t('details.lowConf', 'Needs review'))}</span>`;
+    }
+
+    function renderDetails(bill) {
+      const main = document.getElementById('detailsMain');
+      const cur = bill.currencyCode || 'BDT';
+      const sym = bill.currencySymbol || '';
+      const cat = getCategoryMeta(bill.category);
+      const isCorrected = (field) => (bill.userCorrectedFields || []).includes(field);
+
+      const itemsHtml = (bill.items && bill.items.length)
+        ? bill.items.map((it) => `
+            <div class="breakdown-item">
+              <div>
+                <div class="breakdown-item-name">${escapeHtml(it.name)}</div>
+                ${it.quantity && it.quantity !== 1 ? `<div class="breakdown-item-sub">Qty: ${it.quantity}</div>` : ''}
+              </div>
+              <div class="breakdown-item-amt">${escapeHtml(formatMoney(it.amount, cur, sym))}</div>
+            </div>
+          `).join('')
+        : `<div class="text-small text-muted" style="padding:8px 0;">${escapeHtml(t('details.notDetected', 'Not detected'))}</div>`;
+
+      const insights = [];
+      if (bill.suspiciousChange) {
+        const sc = bill.suspiciousChange;
+        insights.push(`
+          <div class="insight-card warning">
+            <div class="insight-icon"><span style="width:18px;height:18px;">${Icons.warning}</span></div>
+            <div>
+              <div class="insight-title">${escapeHtml(t('details.suspiciousChange', 'Suspicious change'))}: ${sc.roundedPercent}% ${sc.direction}</div>
+              <div class="insight-desc">Previous ${escapeHtml(formatMoney(sc.previousTotal, cur, sym))} • Current ${escapeHtml(formatMoney(sc.currentTotal, cur, sym))}</div>
+            </div>
+          </div>
+        `);
+      }
+      if (bill.recurring) {
+        insights.push(`
+          <div class="insight-card info">
+            <div class="insight-icon"><span style="width:18px;height:18px;">${Icons.repeat}</span></div>
+            <div>
+              <div class="insight-title">${escapeHtml(t('details.recurring', 'Possible recurring expense'))}</div>
+              <div class="insight-desc">${escapeHtml(bill.provider)} — around ${escapeHtml(formatMoney(bill.recurringEstimate || bill.total, cur, sym))}/month</div>
+            </div>
+          </div>
+        `);
+      }
+
+      const priceHistoryHtml = (bill.priceHistory && bill.priceHistory.length)
+        ? `
+          <section class="card" style="display:flex;flex-direction:column;gap:12px;">
+            <div class="section-header" style="margin:0;">
+              <h2 class="section-title">${escapeHtml(t('details.priceHistory', 'Price history'))}: ${escapeHtml(bill.priceHistory[0].itemName)}</h2>
+              <span class="badge badge-neutral">${bill.priceHistory[0].changePercent >= 0 ? '+' : ''}${bill.priceHistory[0].changePercent}%</span>
+            </div>
+            <div class="text-xs text-muted">
+              Low ${escapeHtml(formatMoney(bill.priceHistory[0].lowestPrice, cur, sym))}/${bill.priceHistory[0].unit} •
+              Avg ${escapeHtml(formatMoney(bill.priceHistory[0].averagePrice, cur, sym))}/${bill.priceHistory[0].unit} •
+              High ${escapeHtml(formatMoney(bill.priceHistory[0].highestPrice, cur, sym))}/${bill.priceHistory[0].unit}
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="priceHistoryChart"></canvas></div>
+          </section>
+        `
+        : '';
+
+      main.innerHTML = `
+        <section class="card details-summary-card">
+          <div class="details-top-row">
+            <div>
+              <div class="details-bill-type">${escapeHtml(formatBillTypeLabel(bill.documentType))}</div>
+              <div class="details-provider">${escapeHtml(bill.provider || t('details.notDetected', 'Not detected'))}</div>
+            </div>
+            ${confidenceBadge(bill.confidence || 0.75)}
+          </div>
+          <div class="details-amount-block">
+            <div>
+              <div class="text-xs text-muted">${escapeHtml(bill.amountDue != null ? t('details.amountDue', 'Amount due') : t('details.total', 'Total'))}</div>
+              <div class="details-total-value">${escapeHtml(formatMoney(bill.amountDue ?? bill.total, cur, sym))}</div>
+            </div>
+            <div class="details-due-meta">
+              ${bill.dueDate ? `${escapeHtml(t('details.dueDate', 'Due'))} ${escapeHtml(bill.dueDate)}` : ''}
+              ${isCorrected('total') ? `<span class="badge badge-primary" style="margin-left:6px;">${escapeHtml(t('details.userCorrected', 'User corrected'))}</span>` : ''}
+            </div>
+          </div>
+          <div class="details-meta-grid">
+            <div class="meta-cell">
+              <span class="meta-cell-label">${escapeHtml(t('details.issueDate', 'Issue date'))}</span>
+              <span class="meta-cell-val">${escapeHtml(bill.issueDate || formatShortDate(bill.createdAt))}</span>
+            </div>
+            <div class="meta-cell">
+              <span class="meta-cell-label">${escapeHtml(t('details.category', 'Category'))}</span>
+              <button type="button" class="meta-cell-val" id="changeCategoryBtn" style="text-align:left;color:var(--color-primary);display:inline-flex;align-items:center;gap:6px;">
+                ${escapeHtml(cat.name)}
+              </button>
+            </div>
+            ${bill.accountNumber ? `
+              <div class="meta-cell">
+                <span class="meta-cell-label">${escapeHtml(t('details.accountNumber', 'Account number'))}</span>
+                <span class="meta-cell-val">${escapeHtml(bill.accountNumber)}</span>
+              </div>` : ''}
+            ${bill.invoiceNumber ? `
+              <div class="meta-cell">
+                <span class="meta-cell-label">${escapeHtml(t('details.invoiceNumber', 'Invoice number'))}</span>
+                <span class="meta-cell-val">${escapeHtml(bill.invoiceNumber)}</span>
+              </div>` : ''}
+          </div>
+        </section>
+
+        ${insights.length ? `<section style="display:flex;flex-direction:column;gap:8px;">${insights.join('')}</section>` : ''}
+
+        <section class="card">
+          <div class="section-header">
+            <h2 class="section-title">${escapeHtml(t('details.breakdown', 'Breakdown'))}</h2>
+            <span class="badge badge-neutral">${escapeHtml(cur)}</span>
+          </div>
+          <div class="breakdown-list">${itemsHtml}</div>
+          ${bill.tax != null ? `<div class="breakdown-item"><span class="breakdown-item-name">Tax / VAT</span><span class="breakdown-item-amt">${escapeHtml(formatMoney(bill.tax, cur, sym))}</span></div>` : ''}
+          ${bill.fees != null ? `<div class="breakdown-item"><span class="breakdown-item-name">Fees / Service charge</span><span class="breakdown-item-amt">${escapeHtml(formatMoney(bill.fees, cur, sym))}</span></div>` : ''}
+          ${bill.discounts != null ? `<div class="breakdown-item"><span class="breakdown-item-name">Discounts</span><span class="breakdown-item-amt">-${escapeHtml(formatMoney(bill.discounts, cur, sym))}</span></div>` : ''}
+          <div class="breakdown-total-row">
+            <span>${escapeHtml(t('details.total', 'Total'))}</span>
+            <span class="num-tabular">${escapeHtml(formatMoney(bill.total, cur, sym))}</span>
+          </div>
+        </section>
+
+        ${priceHistoryHtml}
+
+        <section class="details-actions-row">
+          <button type="button" class="btn btn-primary" id="exportPdfBtn">
+            <span style="width:18px;height:18px;">${Icons.download}</span>
+            <span>${escapeHtml(t('details.exportPdf', 'Export PDF'))}</span>
+          </button>
+          <button type="button" class="btn btn-secondary" id="exportTxtBtn">
+            <span style="width:18px;height:18px;">${Icons.fileText}</span>
+            <span>${escapeHtml(t('details.exportTxt', 'Export TXT'))}</span>
+          </button>
+        </section>
+
+        <a href="./ocr.html?id=${encodeURIComponent(bill.id)}" class="btn btn-ghost btn-block">
+          ${escapeHtml(t('details.viewOcr', 'Inspect OCR Text'))}
+        </a>
+      `;
+
+      if (bill.priceHistory && bill.priceHistory.length) {
+        const ph = bill.priceHistory[0];
+        const canvas = document.getElementById('priceHistoryChart');
+        drawCleanBarChart(
+          canvas,
+          ph.points.map((p) => formatShortDate(p.date).slice(0, 6)),
+          ph.points.map((p) => p.unitPrice)
+        );
+      }
+
+      document.getElementById('changeCategoryBtn')?.addEventListener('click', () => {
+        openSheet({
+          title: t('details.category', 'Category'),
+          bodyHtml: `<div style="display:flex;flex-direction:column;gap:8px;">
+            ${CATEGORIES.map((c) => `
+              <button type="button" class="bill-row" data-cat-pick="${c.id}">
+                <div class="bill-row-icon" style="background:${c.soft};color:${c.color};"><span style="width:20px;height:20px;">${c.icon}</span></div>
+                <div class="bill-row-body"><div class="bill-row-title">${escapeHtml(c.name)}</div></div>
+                ${c.id === bill.category ? `<span style="width:18px;height:18px;color:var(--color-primary);">${Icons.check}</span>` : ''}
+              </button>
+            `).join('')}
+          </div>`,
+          onMount: (body) => {
+            body.querySelectorAll('[data-cat-pick]').forEach((btn) => {
+              btn.addEventListener('click', async () => {
+                const newCat = btn.getAttribute('data-cat-pick');
+                currentBill.category = newCat;
+                await learnCategoryOverride(currentBill, newCat);
+                await saveBill(currentBill);
+                closeSheet();
+                renderDetails(currentBill);
+                showToast(t('toast.categoryUpdated', 'Category updated'));
+              });
+            });
+          }
+        });
+      });
+
+      document.getElementById('exportPdfBtn')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const res = await exportBillAsPdf(currentBill);
+        if (res.ok) {
+          btn.querySelector('span:last-child').textContent = t('details.exported', 'Exported');
+          showToast(t('toast.pdfExported', 'PDF exported'));
+        } else {
+          showToast(res.error || 'PDF export failed', Icons.warning);
+        }
+      });
+
+      document.getElementById('exportTxtBtn')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const res = await exportBillsAsTxt([currentBill], `BillSumthin-${currentBill.id}.txt`);
+        if (res.ok) {
+          btn.querySelector('span:last-child').textContent = t('details.exported', 'Exported');
+          showToast(t('toast.txtExported', 'TXT exported'));
+        } else {
+          showToast(res.error || 'TXT export failed', Icons.warning);
+        }
+      });
+    }
+
+    document.getElementById('editBillBtn')?.addEventListener('click', () => {
+      if (!currentBill) return;
+      openSheet({
+        title: t('details.edit', 'Edit'),
+        bodyHtml: `
+          <form id="editBillForm" style="display:flex;flex-direction:column;gap:12px;">
+            <div class="input-group">
+              <label class="input-label" for="editProvider">${escapeHtml(t('details.provider', 'Provider'))}</label>
+              <input class="input" id="editProvider" value="${escapeHtml(currentBill.provider || '')}" />
+            </div>
+            <div class="input-group">
+              <label class="input-label" for="editTotal">${escapeHtml(t('details.total', 'Total'))} (${escapeHtml(currentBill.currencyCode)})</label>
+              <input class="input" id="editTotal" type="number" step="0.01" value="${currentBill.total ?? ''}" />
+            </div>
+            <div class="input-group">
+              <label class="input-label" for="editDue">${escapeHtml(t('details.dueDate', 'Due date'))}</label>
+              <input class="input" id="editDue" value="${escapeHtml(currentBill.dueDate || '')}" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">${escapeHtml(t('details.save', 'Save'))}</button>
+          </form>
+        `,
+        onMount: (body) => {
+          body.querySelector('#editBillForm')?.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const newProv = body.querySelector('#editProvider').value.trim();
+            const newTotal = parseLocaleNumber(body.querySelector('#editTotal').value);
+            const newDue = body.querySelector('#editDue').value.trim();
+            const corrected = new Set(currentBill.userCorrectedFields || []);
+            if (newProv && newProv !== currentBill.provider) {
+              currentBill.provider = newProv;
+              corrected.add('provider');
+            }
+            if (newTotal !== null && newTotal !== currentBill.total) {
+              currentBill.total = newTotal;
+              currentBill.amountDue = newTotal;
+              corrected.add('total');
+            }
+            if (newDue !== (currentBill.dueDate || '')) {
+              currentBill.dueDate = newDue || null;
+              corrected.add('dueDate');
+            }
+            currentBill.userCorrectedFields = Array.from(corrected);
+            await saveBill(currentBill);
+            closeSheet();
+            renderDetails(currentBill);
+            showToast(t('toast.saved', 'Changes saved'));
+          });
+        }
+      });
+    });
+
+    (async () => {
+      await bootstrapPage();
+      if (!billId) {
+        document.getElementById('detailsMain').innerHTML = `<div class="empty-state"><div class="empty-state-title">Bill not found</div><a href="./scan.html" class="btn btn-primary btn-sm">Back to Scan</a></div>`;
+        return;
+      }
+      currentBill = await getBillById(billId);
+      if (!currentBill) {
+        document.getElementById('detailsMain').innerHTML = `<div class="empty-state"><div class="empty-state-title">Bill not found</div><a href="./history.html" class="btn btn-primary btn-sm">View History</a></div>`;
+        return;
+      }
+      renderDetails(currentBill);
+    })();
+  </script>
+</body>
+</html>

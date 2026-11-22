@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Categories</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/navigation.css" />
+  <link rel="stylesheet" href="./css/categories.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <h1 class="page-title" data-i18n="categories.title">Categories</h1>
+    </div>
+    <div class="offline-banner" id="offlineBanner" data-i18n="offline.banner">Offline mode — saved bills and local analysis remain available.</div>
+  </header>
+
+  <main class="app-main animate-fade-in">
+    <section class="categories-grid" id="categoriesGrid"></section>
+  </main>
+
+  <nav id="bottomNav"></nav>
+
+  <script type="module">
+    import { escapeHtml } from './js/utils.js';
+    import { bootstrapPage } from './js/app.js';
+    import { getAllBills } from './js/storage.js';
+    import { aggregateCategories } from './js/categories.js';
+    import { formatMoney } from './js/currency.js';
+    import { t } from './js/language.js';
+
+    (async () => {
+      const settings = await bootstrapPage({ activeTab: 'categories' });
+      const bills = await getAllBills();
+      const cats = aggregateCategories(bills);
+      const cur = settings.preferredCurrency || 'BDT';
+      const grid = document.getElementById('categoriesGrid');
+
+      grid.innerHTML = cats.map((c) => `
+        <a href="./history.html?category=${encodeURIComponent(c.id)}" class="category-card">
+          <div class="category-card-icon" style="background:${c.soft};color:${c.color};">
+            <span style="width:20px;height:20px;">${c.icon}</span>
+          </div>
+          <div class="category-card-name">${escapeHtml(c.name)}</div>
+          <div class="category-card-total">${escapeHtml(formatMoney(c.total, cur))}</div>
+          <div class="category-card-count">${c.count} ${escapeHtml(t('categories.bills', 'bills'))}</div>
+        </a>
+      `).join('');
+    })();
+  </script>
+</body>
+</html>

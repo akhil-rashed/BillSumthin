@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — OCR Inspector</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/ocr.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="page-title-bar">
+        <a href="./scan.html" class="icon-btn icon-flip-rtl" id="backBtn" aria-label="Back"></a>
+        <h1 class="page-title">OCR Inspector</h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main no-bottom-nav animate-fade-in">
+    <section class="card" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="section-title">Detected Language & Confidence</span>
+        <span class="badge badge-primary" id="ocrLangBadge">und</span>
+      </div>
+      <div class="text-small text-muted" id="ocrConfText">Confidence: —</div>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px;">
+      <label class="section-title" for="ocrTextArea">Extracted Text</label>
+      <textarea class="ocr-text-box" id="ocrTextArea" placeholder="Paste or review extracted bill text here..."></textarea>
+      <button type="button" class="btn btn-primary btn-block" id="reanalyzeBtn">Analyze Text</button>
+    </section>
+
+    <section class="card" style="display:flex;flex-direction:column;gap:10px;">
+      <h2 class="section-title">Detected Numbers & Dates</h2>
+      <div class="ocr-tokens-wrap" id="ocrTokensWrap"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { Icons, escapeHtml } from './js/utils.js';
+    import { bootstrapPage, hideAnalysisLoading, showAnalysisLoading, showToast } from './js/app.js';
+    import { getBillById, saveBill } from './js/storage.js';
+    import { extractOcrTokens } from './js/ocr.js';
+    import { analyzeBillText } from './js/bill-analyzer.js';
+    import { analyzeBillAgainstHistory } from './js/history.js';
+    import { resolveBillCategory } from './js/categories.js';
+
+    document.getElementById('backBtn').innerHTML = `<span style="width:18px;height:18px;">${Icons.back}</span>`;
+
+    const params = new URLSearchParams(window.location.search);
+    const billId = params.get('id');
+    let settings = {};
+
+    function renderTokens(text) {
+      const { numbers, dates } = extractOcrTokens(text);
+      const wrap = document.getElementById('ocrTokensWrap');
+      const all = [...numbers, ...dates];
+      wrap.innerHTML = all.length
+        ? all.map((tok) => `<span class="ocr-token">${escapeHtml(tok)}</span>`).join('')
+        : '<span class="text-small text-muted">No numbers or dates detected yet.</span>';
+    }
+
+    document.getElementById('ocrTextArea')?.addEventListener('input', (e) => renderTokens(e.target.value));
+
+    document.getElementById('reanalyzeBtn')?.addEventListener('click', async () => {
+      const text = document.getElementById('ocrTextArea').value.trim();
+      if (!text) {
+        showToast('Please enter or scan bill text first.', Icons.warning);
+        return;
+      }
+      showAnalysisLoading();
+      try {
+        let bill = await analyzeBillText(text, {
+          preferredCurrency: settings.preferredCurrency || 'BDT',
+          geminiApiKey: settings.geminiApiKey || '',
+          ocrLanguage: 'und'
+        });
+        if (billId) bill.id = billId;
+        bill.category = await resolveBillCategory(bill);
+        bill = await analyzeBillAgainstHistory(bill, settings.suspiciousThresholdPct || 25);
+        await saveBill(bill);
+        hideAnalysisLoading();
+        window.location.href = `./bill-details.html?id=${encodeURIComponent(bill.id)}`;
+      } catch {
+        hideAnalysisLoading();
+        showToast('Analysis failed. Please check the text.', Icons.warning);
+      }
+    });
+
+    (async () => {
+      settings = await bootstrapPage();
+      if (billId) {
+        document.getElementById('backBtn').href = `./bill-details.html?id=${encodeURIComponent(billId)}`;
+        const bill = await getBillById(billId);
+        if (bill) {
+          document.getElementById('ocrLangBadge').textContent = bill.ocrLanguage || 'und';
+          document.getElementById('ocrConfText').textContent = `OCR confidence: ${Math.round((bill.ocrConfidence || 0.85) * 100)}%`;
+          document.getElementById('ocrTextArea').value = bill.rawOcrText || '';
+          renderTokens(bill.rawOcrText || '');
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

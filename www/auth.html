@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f5fa" />
+  <title>Welcome to BillSumthin</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/auth.css" />
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <div class="auth-orb auth-orb-one"></div><div class="auth-orb auth-orb-two"></div>
+    <header class="auth-brand">
+      <div class="auth-brand-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h14a1 1 0 0 1 1 1v16l-3-1.8-3 1.8-3-1.8-3 1.8-3-1.8-1 .6v-15a1 1 0 0 1 1-1z"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></div>
+      <span>BillSumthin</span><span class="auth-brand-dot">.</span>
+    </header>
+    <section class="auth-card">
+      <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span> YOUR BILLS, IN BETTER FOCUS</div>
+      <h1 id="authTitle">A clearer view<br/>of your money.</h1>
+      <p class="auth-intro" id="authIntro">Sign in to keep your bill history connected and ready whenever you need it.</p>
+      <div class="auth-tabs" role="tablist"><button class="active" id="signInTab" type="button">Sign in</button><button id="createTab" type="button">Create account</button></div>
+      <form id="authForm" novalidate>
+        <label class="auth-label" for="email">Email address</label>
+        <div class="auth-input-wrap"><span class="auth-input-icon">✉</span><input id="email" type="email" autocomplete="email" placeholder="you@example.com" required /></div>
+        <label class="auth-label" for="password">Password</label>
+        <div class="auth-input-wrap"><span class="auth-input-icon">⌑</span><input id="password" type="password" autocomplete="current-password" placeholder="At least 6 characters" minlength="6" required /><button type="button" id="togglePassword" class="password-toggle" aria-label="Show password">Show</button></div>
+        <p class="auth-error" id="authError" role="alert"></p>
+        <button class="auth-submit" id="submitBtn" type="submit"><span id="submitLabel">Continue with email</span><span aria-hidden="true">↗</span></button>
+      </form>
+      <div class="auth-divider"><span></span> OR <span></span></div>
+      <button class="google-button" id="googleBtn" type="button"><span class="google-g">G</span> Continue with Google</button>
+      <p class="auth-google-note" id="googleNote">Google sign-in needs an OAuth client ID enabled in Firebase Console. Email sign-in is ready.</p>
+      <p class="auth-legal">By continuing, you agree to use BillSumthin responsibly. Your bills stay on this device unless you enable cloud sync.</p>
+    </section>
+    <footer class="auth-footer"><span>BUILT FOR CLARITY</span><span>PRIVATE BY DESIGN · OFFLINE READY</span></footer>
+  </main>
+  <script type="module">
+    import { createAccount, getAuthState, signInWithEmail } from './js/firebase.js';
+    import { loadAndApplySettings } from './js/settings.js';
+    loadAndApplySettings().catch(() => {});
+    const $ = (id) => document.getElementById(id);
+    let mode = 'signin';
+    const setMode = (next) => {
+      mode = next;
+      $('signInTab').classList.toggle('active', mode === 'signin');
+      $('createTab').classList.toggle('active', mode === 'signup');
+      $('authTitle').innerHTML = mode === 'signin' ? 'A clearer view<br>of your money.' : 'Make room for<br>better clarity.';
+      $('authIntro').textContent = mode === 'signin' ? 'Sign in to keep your bill history connected and ready whenever you need it.' : 'Create your account and keep your bill workspace in sync across sessions.';
+      $('submitLabel').textContent = mode === 'signin' ? 'Continue with email' : 'Create my account';
+      $('password').autocomplete = mode === 'signin' ? 'current-password' : 'new-password';
+      $('authError').textContent = '';
+    };
+    $('signInTab').addEventListener('click', () => setMode('signin'));
+    $('createTab').addEventListener('click', () => setMode('signup'));
+    $('togglePassword').addEventListener('click', () => {
+      const field = $('password'); const visible = field.type === 'password';
+      field.type = visible ? 'text' : 'password'; $('togglePassword').textContent = visible ? 'Hide' : 'Show';
+    });
+    $('authForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = $('email').value.trim(); const password = $('password').value;
+      if (!email || !/^\S+@\S+\.\S+$/.test(email)) { $('authError').textContent = 'Enter a valid email address.'; return; }
+      if (password.length < 6) { $('authError').textContent = 'Your password needs at least 6 characters.'; return; }
+      const btn = $('submitBtn'); btn.disabled = true; $('submitLabel').textContent = mode === 'signin' ? 'Signing you in…' : 'Creating your account…'; $('authError').textContent = '';
+      try {
+        const result = mode === 'signin' ? await signInWithEmail(email, password) : await createAccount(email, password);
+        if (!result?.signedIn) throw new Error('Could not confirm your account. Please try again.');
+        sessionStorage.removeItem('bs_preloader_done'); window.location.replace('./pre-loader.html');
+      } catch (error) {
+        $('authError').textContent = error?.message || 'Something went wrong. Please try again.';
+        btn.disabled = false; $('submitLabel').textContent = mode === 'signin' ? 'Continue with email' : 'Create my account';
+      }
+    });
+    $('googleBtn').addEventListener('click', () => {
+      $('authError').textContent = 'Google sign-in is not configured for this Firebase Android app yet. Enable Google as a provider and add an Android OAuth client in Firebase Console.';
+    });
+    getAuthState().then((auth) => { if (auth?.signedIn) window.location.replace('./scan.html'); }).catch(() => {});
+  </script>
+</body>
+</html>

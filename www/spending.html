@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BillSumthin — Spending</title>
+  <link rel="stylesheet" href="./css/variables.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/navigation.css" />
+  <link rel="stylesheet" href="./css/spending.css" />
+  <link rel="stylesheet" href="./css/polish.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <h1 class="page-title" data-i18n="spending.title">Spending</h1>
+    </div>
+    <div class="offline-banner" id="offlineBanner" data-i18n="offline.banner">Offline mode — saved bills and local analysis remain available.</div>
+  </header>
+
+  <main class="app-main animate-fade-in" id="spendingMain"></main>
+
+  <nav id="bottomNav"></nav>
+
+  <script type="module">
+    import { Icons, escapeHtml } from './js/utils.js';
+    import { bootstrapPage } from './js/app.js';
+    import { getAllBills } from './js/storage.js';
+    import { computeSpendingMetrics, drawCleanBarChart } from './js/spending.js';
+    import { formatMoney } from './js/currency.js';
+    import { formatBillTypeLabel } from './js/bill-analyzer.js';
+    import { t } from './js/language.js';
+
+    (async () => {
+      const settings = await bootstrapPage({ activeTab: 'spending' });
+      const bills = await getAllBills();
+      const main = document.getElementById('spendingMain');
+      const cur = settings.preferredCurrency || 'BDT';
+
+      if (!bills.length) {
+        main.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon"><span style="width:24px;height:24px;">${Icons.spending}</span></div>
+            <div class="empty-state-title">${escapeHtml(t('spending.emptyTitle', 'No spending data yet'))}</div>
+            <div class="empty-state-desc">${escapeHtml(t('spending.emptyDesc', 'Your spending picture will appear after a few bills.'))}</div>
+          </div>
+        `;
+        return;
+      }
+
+      const m = computeSpendingMetrics(bills);
+      const maxCat = Math.max(1, ...m.categoryBreakdown.map((c) => c.total));
+
+      const changeBadge = m.changePct === null
+        ? ''
+        : `<span class="badge ${m.changePct > 10 ? 'badge-warning' : 'badge-neutral'}">${m.changePct >= 0 ? '+' : ''}${m.changePct}% vs ${escapeHtml(t('spending.previousMonth', 'Previous month'))}</span>`;
+
+      main.innerHTML = `
+        <section class="card spending-hero-card">
+          <span class="text-xs text-muted">${escapeHtml(t('spending.thisMonth', 'This month'))}</span>
+          <div class="spending-total-amount">${escapeHtml(formatMoney(m.thisMonthTotal, cur))}</div>
+          <div class="spending-comparison-row">
+            <span class="text-small text-muted">${escapeHtml(t('spending.previousMonth', 'Previous month'))}: ${escapeHtml(formatMoney(m.prevMonthTotal, cur))}</span>
+            ${changeBadge}
+          </div>
+        </section>
+
+        <section class="card" style="display:flex;flex-direction:column;gap:12px;">
+          <h2 class="section-title">${escapeHtml(t('spending.monthlyTrend', 'Monthly spending'))}</h2>
+          <div class="chart-canvas-wrap" style="height:170px;"><canvas id="monthlyTrendChart"></canvas></div>
+        </section>
+
+        <section class="card" style="display:flex;flex-direction:column;gap:12px;">
+          <h2 class="section-title">${escapeHtml(t('spending.byCategory', 'Where did my money go?'))}</h2>
+          <div class="spending-bar-list">
+            ${m.categoryBreakdown.map((c) => `
+              <div class="spending-bar-item">
+                <div class="spending-bar-header">
+                  <span class="spending-bar-label">
+                    <span style="width:16px;height:16px;color:${c.color};display:inline-flex;">${c.icon}</span>
+                    ${escapeHtml(c.name)}
+                  </span>
+                  <span class="num-tabular" style="font-weight:700;">${escapeHtml(formatMoney(c.total, cur))}</span>
+                </div>
+                <div class="spending-bar-track">
+                  <div class="spending-bar-fill" style="width:${Math.max(4, Math.round((c.total / maxCat) * 100))}%;background:${c.color};"></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        ${m.recurringBills.length ? `
+          <section class="card" style="display:flex;flex-direction:column;gap:10px;">
+            <h2 class="section-title">${escapeHtml(t('spending.recurring', 'Recurring expenses'))}</h2>
+            ${m.recurringBills.slice(0, 4).map((b) => `
+              <a href="./bill-details.html?id=${encodeURIComponent(b.id)}" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--color-border);">
+                <span style="font-weight:600;font-size:14px;">${escapeHtml(b.provider !== 'Not detected' ? b.provider : formatBillTypeLabel(b.documentType))}</span>
+                <span class="num-tabular text-small" style="font-weight:700;">~${escapeHtml(formatMoney(b.recurringEstimate || b.total, b.currencyCode, b.currencySymbol))}/mo</span>
+              </a>
+            `).join('')}
+          </section>
+        ` : ''}
+
+        <section class="card" style="display:flex;flex-direction:column;gap:10px;">
+          <h2 class="section-title">${escapeHtml(t('spending.largest', 'Largest expenses'))}</h2>
+          ${m.largestBills.map((b) => `
+            <a href="./bill-details.html?id=${encodeURIComponent(b.id)}" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--color-border);">
+              <span style="font-weight:600;font-size:14px;">${escapeHtml(b.provider !== 'Not detected' ? b.provider : formatBillTypeLabel(b.documentType))}</span>
+              <span class="num-tabular text-small" style="font-weight:700;">${escapeHtml(formatMoney(b.total, b.currencyCode, b.currencySymbol))}</span>
+            </a>
+          `).join('')}
+        </section>
+      `;
+
+      drawCleanBarChart(
+        document.getElementById('monthlyTrendChart'),
+        m.months.map((x) => x.label),
+        m.months.map((x) => x.total)
+      );
+    })();
+  </script>
+</body>
+</html>
